@@ -56,10 +56,24 @@ def package(dataset,prediction_ID):
 # Returns new variable
 #-----------------------------------------------------------------------------
 def unpackage(prediction_ID):
+    #path = 'C:\\Users\\Owner\\Desktop\\MBURSTPython'
+    #pickle_in = open(path+'\\'+prediction_ID+".pickle","rb")
     pickle_in = open(prediction_ID+".pickle","rb")
     dataset = pickle.load(pickle_in)
     return dataset
 
+#-----------------------------------------------------------------------------
+# Function to read in multiple saved variables.
+# Input is flightID (str) and number of predictions (int)
+# Returns dictionary filled with prediction elements
+#-----------------------------------------------------------------------------
+def unpackageGroup(flightID,numPredictions):
+    allPredictions = dict()
+    for predictionID in range(1,numPredictions+1):
+        data = unpackage('p_'+flightID+'_'+str(predictionID))
+        allPredictions[str(predictionID)] = data
+        
+    return allPredictions
 #-----------------------------------------------------------------------------
 # Function to figure out prediction arguments 
 #-----------------------------------------------------------------------------
@@ -302,7 +316,7 @@ def get_args(argv,queryTime):
     #LaunchTime = datetime.datetime(Year,Month,Day,Hour,0,0)
     
     if queryTime == 'now':
-        LaunchTime = datetime.datetime.now()
+        LaunchTime = datetime.datetime.strptime(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),"%Y-%m-%d %H:%M:%S")
     if queryTime != 'now':
         LaunchTime = datetime.datetime.strptime(queryTime, '%Y-%m-%d %H:%M:%S')
         
@@ -925,45 +939,47 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
                 
                 TotalTimeEnsem = []
                 AscentTime = 0
-    
-                while (Diameter < BurstDiameter and altitude > -1.0):
-    
-                    NumberOfHelium = NumberOfHelium * (1.0-args['loss']/100.0/60.0*dt)
-    
-                    if (args['update'] == 1):
-                        filename,url,IsNam,StatLat,StatLon = get_station(longitude, latitude)
-                        if (StatLat != StationLat[-1]):
-                            StationLat.append(StatLat)
-                            StationLon.append(StatLon)
-                        if (filename != oldfilename):
-                            RapData = read_rap(filename,args,IsNam)
-                            oldfilename = filename
-    
-                    Veast,Vnorth = get_wind(RapData,altitude)
-    
-                    Veast  = random.normalvariate(Veast, np.abs(Veast)*errors)
-                    Vnorth = random.normalvariate(Vnorth,np.abs(Vnorth)*errors)
-    
-                    DegPerMeter = 360.0 / (2*pi * (EarthRadius + altitude))
-                    longitude = longitude + Veast  * DegPerMeter * dt / np.cos(latitude*dtor)
-                    latitude  = latitude  + Vnorth * DegPerMeter * dt
-    
-                    AscentRate,Diameter = calc_ascent_rate(RapData, NumberOfHeliumPerturbed, args, altitude)
-    
-                    if (altitude < args['hover']):
-                        altitude = altitude + AscentRate*dt
-    
-                    AscentTime = AscentTime + dt
-                    TotalTimeEnsem.append(AscentTime)
-                    
-                    if (AscentTime > args['bursttime']):
-                        Diameter = BurstDiameter*2
-                    
-                    secLat.append(latitude)
-                    secLon.append(longitude)
-                    secAlt.append(altitude)
+                
+                if status != -1:
+                    while (Diameter < BurstDiameter and altitude > -1.0):
+        
+                        NumberOfHelium = NumberOfHelium * (1.0-args['loss']/100.0/60.0*dt)
+        
+                        if (args['update'] == 1):
+                            filename,url,IsNam,StatLat,StatLon = get_station(longitude, latitude)
+                            if (StatLat != StationLat[-1]):
+                                StationLat.append(StatLat)
+                                StationLon.append(StatLon)
+                            if (filename != oldfilename):
+                                RapData = read_rap(filename,args,IsNam)
+                                oldfilename = filename
+        
+                        Veast,Vnorth = get_wind(RapData,altitude)
+        
+                        Veast  = random.normalvariate(Veast, np.abs(Veast)*errors)
+                        Vnorth = random.normalvariate(Vnorth,np.abs(Vnorth)*errors)
+        
+                        DegPerMeter = 360.0 / (2*pi * (EarthRadius + altitude))
+                        longitude = longitude + Veast  * DegPerMeter * dt / np.cos(latitude*dtor)
+                        latitude  = latitude  + Vnorth * DegPerMeter * dt
+        
+                        AscentRate,Diameter = calc_ascent_rate(RapData, NumberOfHeliumPerturbed, args, altitude)
+        
+                        if (altitude < args['hover']):
+                            altitude = altitude + AscentRate*dt
+        
+                        AscentTime = AscentTime + dt
+                        TotalTimeEnsem.append(AscentTime)
                         
-                DifferenceInPeakAltitude = DifferenceInPeakAltitude + (altitude-PeakAltitude)**2
+                        if (AscentTime > args['bursttime']):
+                            Diameter = BurstDiameter*2
+                        
+                        secLat.append(latitude)
+                        secLon.append(longitude)
+                        secAlt.append(altitude)
+                            
+                    DifferenceInPeakAltitude = DifferenceInPeakAltitude + (altitude-PeakAltitude)**2
+    
     
                 if (altitude < 0.0):
                     altitude = RapData['Altitude'][0] + 1.0
@@ -1006,7 +1022,7 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
             RealTimeLon = []
             RealTimeAlt = []
            
-    
+    # Store time-domain data for nominal prediction
     AllData = dict()   
     AllData['TimeData'] = pandas.DataFrame(index = pandas.to_datetime(pandas.to_datetime(args['launchtime']) + pandas.to_timedelta(TotalTime, unit='s')))
     AllData['TimeData']['Status'] = Status
@@ -1014,20 +1030,28 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
     AllData['TimeData']['Longitude'] = Longitudes
     AllData['TimeData']['Altitude'] = np.array(Altitudes) * 3.28084
     
+    # Store prediction output stats for nominal prediction 
     AllData['Ascent Rate'] = AscentRateSave * 3.28084
     AllData['Burst Altitude'] = BurstAltitude * 3.28084
     AllData['Burst Latitude'] = BurstLatitude 
     AllData['Burst Longitude'] = BurstLongitude 
-    AllData['Launch Time'] = pandas.to_datetime(args['launchtime'])
     AllData['Landing Lat'] = Latitudes[-1]
     AllData['Landing Lon'] = Longitudes[-1]
     AllData['Landing Time'] = AllData['TimeData'].index[-1]
     
+    # Store data related to ensembles
     AllData['Landing Deviations'] = pandas.DataFrame()
     AllData['Landing Deviations']['Lat'] = FinalLatitudes
     AllData['Landing Deviations']['Lon'] = FinalLongitudes 
-    
     AllData['Secondary Tracks'] = secondaryTracks
    
+    # Store data used for prediction input
+    AllData['Inputs'] = dict() 
+    AllData['Inputs']['Launch Time'] = pandas.to_datetime(args['launchtime'])
+    AllData['Inputs']['Altitude'] = alt
+    AllData['Inputs']['Lat'] = lat
+    AllData['Inputs']['Lon'] = lon
+    AllData['Inputs']['Status'] = status
+
     return AllData
 
