@@ -12,36 +12,6 @@ import requests
 import pickle
 
 #-----------------------------------------------------------------------------
-#                   READ ME
-#-----------------------------------------------------------------------------
-# Import balloon before calling function
-
-# data = balloon.prediction(payload weight,balloon mass,parachute diameter,helium tanks,latitude,longitude,current altitude,status,query time)
-# payload weight        - lbs
-# balloon mass          - grams
-# parachute diameter    - ft
-# helium tanks          - # of tanks
-# latitude              - deg
-# longitude             - deg
-# current altitude      - ft
-# status                - ascent (1) or descent (-1)
-# query time            - string: 'now' or 'YYYY-MM-DD hh:mm:ss'
-
-# EXAMPLE:
-# data = balloon.prediction(6.0,1000,6.0,1.5,41.64,-83.243,10000,1,'now')
-
-# Function returns dictionary, which consists of keys:
-# ..['Burst Altitude']      - ft
-# ..['Burst Latitude']      - deg
-# ..['Burst Longitude']     - deg
-# ..['Landing Lat']         - deg
-# ..['Landing Lon']         - deg
-# ..['Landing Time']        - Timestamp (when balloon is predicted to land, absolute time)
-# ..['Launch Time']         - Timestamp (what time the prediction was preformed at, absolute time)
-# ..['TimeData']            - Timeseries Dataframe, consists of time (absolute), status (ascent or descent), lat (deg), long (deg), and altitude (ft)
-
-
-#-----------------------------------------------------------------------------
 # Function to get aprs data. Returns dictionary with lots of info from the aprs packet
 #-----------------------------------------------------------------------------
 def APRS(callsign):
@@ -50,7 +20,6 @@ def APRS(callsign):
     APRS_data = aprs_dict['entries'][0]
 
     return APRS_data
-
 
 #-----------------------------------------------------------------------------
 # Function to send a slack message
