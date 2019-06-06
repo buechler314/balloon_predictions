@@ -3,7 +3,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 
 # Import flight Data
-data = balloon.prediction(6.0,1000,6.0,1,41.64,-83.243,40000,1,'now',100,0.2)
+data = balloon.prediction(6.0,1000,6.0,1,41.64,-83.243,40000,1,'now',110,0.2)
 
 # Plot Nominal data
 fig = plt.figure(figsize=(40,35))
