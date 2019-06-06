@@ -1,10 +1,27 @@
 Property of Michigan Balloon Recovery and Satellite Testbed 
+Last Updated: 6/5/2019
 
 ---------------- Balloon.py -------------------------------------
+MODULES NEEDED:
 
-Contains multiple functions that can be called.
-Import balloon on any script that uses one of these functions
+import re
+import datetime
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+import sys
+import random
+import time
+import pandas
+import json
+import requests
+import pickle
 
+DESCRIPTION:
+- Contains multiple functions that can be called.
+- Import balloon on any script that uses one of these functions
+
+FUNCTIONS:
 - APRS_data = APRS(callsign)
 	- Function to get aprs data. 
 	- Returns dictionary with lots of info from the aprs packet
@@ -34,7 +51,7 @@ Import balloon on any script that uses one of these functions
 	- longitude             - deg (float)
 	- current altitude      - ft (float)
 	- status                - ascent (1) or descent (-1) (int)
-	- query time            - string: 'now' or 'YYYY-MM-DD hh:mm:ss'
+	- query time            - string: 'now' or 'YYYY-MM-DD hh:mm:ss'. 
 	- # of ensembles 	      - Number of ensembles to run (int). -1 if none. 
 	- error in ensembles    - Amount of error to run with each ensemble (float). Usually between 0 and 1.
 
@@ -54,3 +71,12 @@ Import balloon on any script that uses one of these functions
 	Example:
 
 	data = balloon.prediction(6.0,1000,6.0,1,41.64,-83.243,40000,1,'now',110,0.2)
+
+
+---------------- StationList.txt -------------------------------------
+- Contains a list of weather stations
+- Does not need to be altered.
+
+---------------- StationListWorld.txt -------------------------------------
+- Contains a list of weather stations
+- Does not need to be altered.
