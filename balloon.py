@@ -3,6 +3,8 @@ import datetime
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+import mpl_toolkits.mplot3d.axes3d as p3
 import sys
 import random
 import time
@@ -10,6 +12,7 @@ import pandas
 import json
 import requests
 import pickle
+import math
 
 #-----------------------------------------------------------------------------
 # Function to get aprs data. Returns dictionary with lots of info from the aprs packet
@@ -72,8 +75,136 @@ def unpackageGroup(flightID,numPredictions):
     for predictionID in range(1,numPredictions+1):
         data = unpackage('p_'+flightID+'_'+str(predictionID))
         allPredictions[str(predictionID)] = data
-        
     return allPredictions
+
+#-----------------------------------------------------------------------------
+# Function to run prediction backwards. 
+# Outputs launching location based on desired landing location
+#-----------------------------------------------------------------------------
+def launchPrediction(payload,balloon,parachute,helium,lat,lon,launchTime,tolerance):
+    
+    # Do initial prediction with lanuch from desired lat/lon landing spot
+    data = prediction(payload,balloon,parachute,helium,lat,lon,-1,1,launchTime,-1,0.1)
+    # find difference in lat and lon (desired - actual)
+    deltaLat = lat - data['Landing Lat']
+    deltaLon = lon - data['Landing Lon']
+    
+    newLat = lat + deltaLat
+    newLon = lon + deltaLon    
+    
+    withinBounds = 0
+    degrees_to_radians = math.pi/180.0
+    
+    while withinBounds == 0:
+        data = prediction(payload,balloon,parachute,helium,newLat,newLon,-1,1,launchTime,-1,0.1)
+        
+        # phi = 90 - latitude
+        phi1 = (90.0 - lat)*degrees_to_radians
+        phi2 = (90.0 - data['Landing Lat'])*degrees_to_radians
+        
+        # theta = longitude
+        theta1 = lon*degrees_to_radians
+        theta2 = data['Landing Lon']*degrees_to_radians
+               
+        cos = (math.sin(phi1)*math.sin(phi2)*math.cos(theta1 - theta2) + math.cos(phi1)*math.cos(phi2))
+        arc = math.acos( cos )
+        distance = arc*3958.8*5280
+        
+        if distance <= tolerance:
+            #print('Reached distance: '+str(distance)+' ft')
+            break
+        #print('Failed: '+str(distance)+' ft')
+        
+        # find difference in lat and lon (desired - actual)
+        deltaLat = lat - data['Landing Lat']
+        deltaLon = lon - data['Landing Lon']
+        
+        newLat = newLat + deltaLat
+        newLon = newLon + deltaLon 
+     
+    launchLoc = dict()
+    launchLoc['Lat'] = newLat
+    launchLoc['Lon'] = newLon
+    launchLoc['Tolerace'] = distance
+    return launchLoc
+    
+
+#-----------------------------------------------------------------------------
+# Function to plot one prediction worth of data
+#-----------------------------------------------------------------------------
+def plotPrediction(data):
+    fig = plt.figure(figsize=(40,35))
+    ax = fig.gca(projection='3d')
+    
+    Color = 'red'
+    lineWidth = 5
+    Alpha=1
+    ax.plot(data['TimeData']['Latitude'], data['TimeData']['Longitude'], data['TimeData']['Altitude'],color=Color,linewidth=lineWidth,alpha=Alpha)
+    
+    lineWidth = 1
+    Alpha=0.4
+    for ensembles in data['Secondary Tracks']:
+        ax.plot(data['Secondary Tracks'][str(ensembles)]['Lat'],data['Secondary Tracks'][str(ensembles)]['Lon'],data['Secondary Tracks'][str(ensembles)]['Alt'],color=Color,linewidth=lineWidth,alpha=Alpha)
+    
+    plt.show()
+
+#-----------------------------------------------------------------------------
+# Function to animate one prediction
+#-----------------------------------------------------------------------------
+def PredictionAni(PredData,saving):
+    def update_lines(num, dataLines, lines):
+        for line, data in zip(lines, dataLines):
+            line.set_data(data[0:2, :num])
+            line.set_3d_properties(data[2, :num])
+        return lines
+    
+    # Make 3D figure
+    fig = plt.figure(figsize=(30,25))
+    ax = p3.Axes3D(fig)
+    
+    # Get lines
+    flight = list()
+    flight.append(np.array(PredData['TimeData'][['Latitude','Longitude','Altitude']]).transpose())
+    for track in range(0,len(PredData['Secondary Tracks'])):
+        newArray1 = np.array(PredData['SecTracksTimeDomain']['Lat'][str(track)].values)
+        newArray2 = np.array(PredData['SecTracksTimeDomain']['Lon'][str(track)].values)
+        newArray3 = np.array(PredData['SecTracksTimeDomain']['Alt'][str(track)].values)
+        new = np.column_stack((newArray1,newArray2,newArray3))
+        new = new.transpose()
+        flight.append(new)
+    data=flight
+    
+    # Create line objects
+    lines = [ax.plot(dat[0, 0:1], dat[1, 0:1], dat[2, 0:1])[0] for dat in data]
+    lines[0].set_alpha(1)
+    lines[0].set_color('blue')
+    lines[0].set_linewidth = 5
+        
+    for line in range(1,len(lines)):
+        lines[line].set_alpha(0.3)
+        lines[line].set_color('red')
+        lines[line].set_linewidth = 1
+    
+    # Set Axes
+    fontSize = 30
+    ax.set_xlim3d([min(PredData['TimeData']['Latitude']), max(PredData['TimeData']['Latitude'])])
+    ax.set_xlabel('Latitude',fontsize=fontSize)
+    
+    ax.set_ylim3d([min(PredData['TimeData']['Longitude']), max(PredData['TimeData']['Longitude'])])
+    ax.set_ylabel('Longitude',fontsize=fontSize)
+    
+    ax.set_zlim3d([min(PredData['TimeData']['Altitude']), max(PredData['TimeData']['Altitude'])])
+    ax.set_zlabel('Altitude',fontsize=fontSize)
+    
+    # Create Animation
+    line_ani = animation.FuncAnimation(fig, update_lines,frames=max(data[0].shape[1],data[1].shape[1]), fargs=(data, lines),interval=1, blit=False)
+    plt.show()
+    
+    if saving == 1:
+        print('Saving File...')
+        line_ani.save('FlightPath.gif')
+
+
 #-----------------------------------------------------------------------------
 # Function to figure out prediction arguments 
 #-----------------------------------------------------------------------------
@@ -719,6 +850,9 @@ MassOfHelium = 6.69e-27 # kg
 SurfaceGravity = 9.80665 # m/s2
 EarthRadius = 6372000.0 # m
 
+#-----------------------------------------------------------------------------
+# Function to run a prediction given certain input parameters. 
+#-----------------------------------------------------------------------------
 
 def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEnsembles,errors):
     # Define Input List
@@ -726,14 +860,7 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
     
     if status == -1:
         Inputs.append('-de')
-   
-    
-    #-----------------------------------------------------------------------------
-    #-----------------------------------------------------------------------------
-    # Main Code!
-    #-----------------------------------------------------------------------------
-    #-----------------------------------------------------------------------------
-    
+       
     #args = get_args(sys.argv)
     args = get_args(Inputs,queryTime)   
     
@@ -918,7 +1045,9 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
     
             DifferenceInPeakAltitude = 0.0
             secondaryTracks = dict()
-        
+            
+            secondaryTracksN = dict()
+            
             while (i < nEnsembles):
                 secLat = list()
                 secLon = list()
@@ -1013,6 +1142,35 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
                 secondaryTracks[str(i)]['Lon'] = secLon
                 secondaryTracks[str(i)]['Alt'] = np.array(secAlt) * 3.28084
                 
+                if i == 0:
+                    secondaryTracksN['Lat'] = pandas.DataFrame()
+                    secondaryTracksN['Lat']['time'] = pandas.to_datetime(pandas.to_datetime(args['launchtime']) + pandas.to_timedelta(TotalTimeEnsem, unit='s'))
+                    secondaryTracksN['Lat'][str(i)] = secLat
+                    
+                    secondaryTracksN['Lon'] = pandas.DataFrame()
+                    secondaryTracksN['Lon']['time'] = pandas.to_datetime(pandas.to_datetime(args['launchtime']) + pandas.to_timedelta(TotalTimeEnsem, unit='s'))
+                    secondaryTracksN['Lon'][str(i)] = secLon
+                    
+                    secondaryTracksN['Alt'] = pandas.DataFrame()
+                    secondaryTracksN['Alt']['time'] = pandas.to_datetime(pandas.to_datetime(args['launchtime']) + pandas.to_timedelta(TotalTimeEnsem, unit='s'))
+                    secondaryTracksN['Alt'][str(i)] = np.array(secAlt) * 3.28084
+                if i > 0:
+                    tempTrackLat = pandas.DataFrame()
+                    tempTrackLat['time'] = pandas.to_datetime(pandas.to_datetime(args['launchtime']) + pandas.to_timedelta(TotalTimeEnsem, unit='s'))
+                    tempTrackLat[str(i)] = secLat
+                          
+                    tempTrackLon = pandas.DataFrame()
+                    tempTrackLon['time'] = pandas.to_datetime(pandas.to_datetime(args['launchtime']) + pandas.to_timedelta(TotalTimeEnsem, unit='s'))
+                    tempTrackLon[str(i)] = secLon
+                    
+                    tempTrackAlt = pandas.DataFrame()
+                    tempTrackAlt['time'] = pandas.to_datetime(pandas.to_datetime(args['launchtime']) + pandas.to_timedelta(TotalTimeEnsem, unit='s'))
+                    tempTrackAlt[str(i)] = np.array(secAlt) * 3.28084
+                    
+                    secondaryTracksN['Lat'] = pandas.merge(secondaryTracksN['Lat'],tempTrackLat, sort=True, on='time', how='outer')
+                    secondaryTracksN['Lon'] = pandas.merge(secondaryTracksN['Lon'],tempTrackLon, sort=True, on='time', how='outer')
+                    secondaryTracksN['Alt'] = pandas.merge(secondaryTracksN['Alt'],tempTrackAlt, sort=True, on='time', how='outer')
+               
                 i=i+1
                 
             if (nEnsembles > 1):
@@ -1037,14 +1195,8 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
     AllData['Burst Longitude'] = BurstLongitude 
     AllData['Landing Lat'] = Latitudes[-1]
     AllData['Landing Lon'] = Longitudes[-1]
-    AllData['Landing Time'] = AllData['TimeData'].index[-1]
+    AllData['Landing Time'] = AllData['TimeData'].index[-1] 
     
-    # Store data related to ensembles
-    AllData['Landing Deviations'] = pandas.DataFrame()
-    AllData['Landing Deviations']['Lat'] = FinalLatitudes
-    AllData['Landing Deviations']['Lon'] = FinalLongitudes 
-    AllData['Secondary Tracks'] = secondaryTracks
-   
     # Store data used for prediction input
     AllData['Inputs'] = dict() 
     AllData['Inputs']['Launch Time'] = pandas.to_datetime(args['launchtime'])
@@ -1052,6 +1204,13 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
     AllData['Inputs']['Lat'] = lat
     AllData['Inputs']['Lon'] = lon
     AllData['Inputs']['Status'] = status
+    
+    # Store data related to ensembles
+    AllData['Landing Deviations'] = pandas.DataFrame()
+    AllData['Landing Deviations']['Lat'] = FinalLatitudes
+    AllData['Landing Deviations']['Lon'] = FinalLongitudes 
+    AllData['Secondary Tracks'] = secondaryTracks 
+    AllData['SecTracksTimeDomain'] = secondaryTracksN
 
     return AllData
 

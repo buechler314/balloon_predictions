@@ -2,13 +2,13 @@ import balloon
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 
-
 # Set flight ID and number of predictions
 flightID = '01'
 predictionNum = 6
 
 # Get all predictions data
 AllData = balloon.unpackageGroup(flightID,predictionNum)
+
 
 # Initialize plot
 fig = plt.figure(figsize=(40,35))
