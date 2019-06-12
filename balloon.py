@@ -209,7 +209,7 @@ def heatMap(data):
     lon_list = list(data['Landing Deviations']['Lon'])   
     gmap = gmplot.GoogleMapPlotter(statistics.mean(lat_list),statistics.mean(lon_list),10)
     gmap.heatmap(lat_list,lon_list) 
-    #gmap.apikey = "AIzaSyAQObil0TIvtyXUf1pMRCLpIBE0pRgyn9M"   
+    gmap.apikey = <YOUR_API_KEY>
     gmap.draw( "C:\\Users\\Owner\\Desktop\\MBURSTPython\\map.html" ) 
 
 #-----------------------------------------------------------------------------
@@ -498,7 +498,6 @@ def get_args(argv,queryTime):
 # Originally written by Aaron J Ridley - https://github.com/aaronjridley/Balloons
 # Modified by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
-
 def get_station(longitude, latitude):
 
     #fpin = open(os.getcwd()+'\\StationList.txt','r')
@@ -578,7 +577,6 @@ def get_station(longitude, latitude):
 # Originally written by Aaron J Ridley - https://github.com/aaronjridley/Balloons
 # Modified by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
-
 def read_rap(file,args,IsNam):
 
     if (IsNam):
@@ -679,7 +677,6 @@ def read_rap(file,args,IsNam):
 # Originally written by Aaron J Ridley - https://github.com/aaronjridley/Balloons
 # Modified by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
-
 def KaymontBalloonBurst(BalloonMass):
 
     # Balloon Masses
