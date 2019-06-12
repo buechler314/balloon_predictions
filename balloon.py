@@ -13,9 +13,11 @@ import json
 import requests
 import pickle
 import math
+import gmplot 
+import statistics
 
 #-----------------------------------------------------------------------------
-# Function to get aprs data. Returns dictionary with lots of info from the aprs packet
+# Written by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
 def APRS(callsign):
     json_response= requests.get("http://api.aprs.fi/api/get?name="+callsign+"&what=loc&apikey=42457.M4AFa3hdkXG31&format=json")
@@ -25,7 +27,7 @@ def APRS(callsign):
     return APRS_data
 
 #-----------------------------------------------------------------------------
-# Function to send a slack message
+# Written by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
 def send_slack(messageString,messageType,recipient):
     slackURL = "https://hooks.slack.com/services/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"
@@ -45,8 +47,7 @@ def send_slack(messageString,messageType,recipient):
     os.system(command)
 
 #-----------------------------------------------------------------------------
-# Function to save a variable with any nesting degree 
-# Inputs are variable name and prediction ID which will be set as the filename
+# Written by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
 def package(dataset,prediction_ID):
     pickle_out = open(prediction_ID+".pickle","wb")
@@ -54,9 +55,7 @@ def package(dataset,prediction_ID):
     pickle_out.close()
     
 #-----------------------------------------------------------------------------
-# Function to read in a saved variable.
-# Input is filename without extension
-# Returns new variable
+# Written by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
 def unpackage(prediction_ID):
     #path = 'C:\\Users\\Owner\\Desktop\\MBURSTPython'
@@ -66,9 +65,7 @@ def unpackage(prediction_ID):
     return dataset
 
 #-----------------------------------------------------------------------------
-# Function to read in multiple saved variables.
-# Input is flightID (str) and number of predictions (int)
-# Returns dictionary filled with prediction elements
+# Written by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
 def unpackageGroup(flightID,numPredictions):
     allPredictions = dict()
@@ -77,9 +74,8 @@ def unpackageGroup(flightID,numPredictions):
         allPredictions[str(predictionID)] = data
     return allPredictions
 
-#-----------------------------------------------------------------------------
-# Function to run prediction backwards. 
-# Outputs launching location based on desired landing location
+#----------------------------------------------------------------------------- 
+# Written by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
 def launchPrediction(payload,balloon,parachute,helium,lat,lon,launchTime,tolerance):
     
@@ -130,7 +126,7 @@ def launchPrediction(payload,balloon,parachute,helium,lat,lon,launchTime,toleran
     
 
 #-----------------------------------------------------------------------------
-# Function to plot one prediction worth of data
+# Written by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
 def plotPrediction(data):
     fig = plt.figure(figsize=(40,35))
@@ -149,13 +145,14 @@ def plotPrediction(data):
     plt.show()
 
 #-----------------------------------------------------------------------------
-# Function to animate one prediction
+# Written by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
 def PredictionAni(PredData,saving):
     def update_lines(num, dataLines, lines):
         for line, data in zip(lines, dataLines):
             line.set_data(data[0:2, :num])
             line.set_3d_properties(data[2, :num])
+                    
         return lines
     
     # Make 3D figure
@@ -188,25 +185,36 @@ def PredictionAni(PredData,saving):
     # Set Axes
     fontSize = 30
     ax.set_xlim3d([min(PredData['TimeData']['Latitude']), max(PredData['TimeData']['Latitude'])])
-    ax.set_xlabel('Latitude',fontsize=fontSize)
+    #ax.set_xlabel('Latitude',fontsize=fontSize)
     
     ax.set_ylim3d([min(PredData['TimeData']['Longitude']), max(PredData['TimeData']['Longitude'])])
-    ax.set_ylabel('Longitude',fontsize=fontSize)
+    #ax.set_ylabel('Longitude',fontsize=fontSize)
     
     ax.set_zlim3d([min(PredData['TimeData']['Altitude']), max(PredData['TimeData']['Altitude'])])
-    ax.set_zlabel('Altitude',fontsize=fontSize)
+    #ax.set_zlabel('Altitude',fontsize=fontSize)
     
     # Create Animation
-    line_ani = animation.FuncAnimation(fig, update_lines,frames=max(data[0].shape[1],data[1].shape[1]), fargs=(data, lines),interval=1, blit=False)
+    line_ani = animation.FuncAnimation(fig, update_lines,frames=max(data[0].shape[1],data[1].shape[1]), fargs=(data, lines),interval=1, blit=True)
     plt.show()
     
     if saving == 1:
         print('Saving File...')
         line_ani.save('FlightPath.gif')
 
+#-----------------------------------------------------------------------------
+# Written by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
+#-----------------------------------------------------------------------------
+def heatMap(data):
+    lat_list = list(data['Landing Deviations']['Lat'])
+    lon_list = list(data['Landing Deviations']['Lon'])   
+    gmap = gmplot.GoogleMapPlotter(statistics.mean(lat_list),statistics.mean(lon_list),10)
+    gmap.heatmap(lat_list,lon_list) 
+    #gmap.apikey = "AIzaSyAQObil0TIvtyXUf1pMRCLpIBE0pRgyn9M"   
+    gmap.draw( "C:\\Users\\Owner\\Desktop\\MBURSTPython\\map.html" ) 
 
 #-----------------------------------------------------------------------------
-# Function to figure out prediction arguments 
+# Originally written by Aaron J Ridley - https://github.com/aaronjridley/Balloons
+# Modified by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
 def get_args(argv,queryTime):
     payload   = -1.0
@@ -487,7 +495,8 @@ def get_args(argv,queryTime):
     return args
 
 #-----------------------------------------------------------------------------
-# Determine which station(s) is(are) closest to the latitude and longitude
+# Originally written by Aaron J Ridley - https://github.com/aaronjridley/Balloons
+# Modified by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
 
 def get_station(longitude, latitude):
@@ -566,7 +575,8 @@ def get_station(longitude, latitude):
     return (outfile,url,IsNam,SaveLat,SaveLon)
 
 #-----------------------------------------------------------------------------
-# Read RAP file
+# Originally written by Aaron J Ridley - https://github.com/aaronjridley/Balloons
+# Modified by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
 
 def read_rap(file,args,IsNam):
@@ -606,8 +616,9 @@ def read_rap(file,args,IsNam):
                 #print('searching... : ',args['year'],args['month'],args['day'],args['hour'])
                 if (y == args['year'] and m == args['month'] and d == args['day'] and h == args['hour']):
                     IsDone = 1
-                    print('Forcast Time used for prediction: '+str(y)+' '+str(m)+' '+str(d)+' '+str(h))
-            
+                    #print('Forcast Time used for prediction: '+str(y)+' '+str(m)+' '+str(d)+' '+str(h))
+    
+    forcastTime = str(y)+'-'+str(m)+'-'+str(d)+' '+str(h)
     #print('done reading time!')
 
     if (IsDone == 1):
@@ -662,10 +673,11 @@ def read_rap(file,args,IsNam):
     data = {'Altitude':altitude, 'Pressure':pressure, 'Temperature':temperature,
             'Veast':ve, 'Vnorth':vn}
             
-    return data
+    return (data,forcastTime)
 
 #-----------------------------------------------------------------------------
-# 
+# Originally written by Aaron J Ridley - https://github.com/aaronjridley/Balloons
+# Modified by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
 
 def KaymontBalloonBurst(BalloonMass):
@@ -689,9 +701,9 @@ def KaymontBalloonBurst(BalloonMass):
     return burst
 
 #-----------------------------------------------------------------------------
-# 
+# Originally written by Aaron J Ridley - https://github.com/aaronjridley/Balloons
+# Modified by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
-
 def calculate_helium(NumberOfTanks):
 
     # Assumes Room Temperature:
@@ -709,10 +721,9 @@ def calculate_helium(NumberOfTanks):
     return NumberOfHe
 
 #-----------------------------------------------------------------------------
+# Originally written by Aaron J Ridley - https://github.com/aaronjridley/Balloons
+# Modified by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
-#-----------------------------------------------------------------------------
-#-----------------------------------------------------------------------------
-
 def calc_ascent_rate(RapData, NumberOfHelium, args, altitude):
 
     Temperature,Pressure = get_temperature_and_pressure(altitude,RapData)
@@ -762,8 +773,9 @@ def calc_ascent_rate(RapData, NumberOfHelium, args, altitude):
     return (AscentRate, Diameter)
 
 #-----------------------------------------------------------------------------
+# Originally written by Aaron J Ridley - https://github.com/aaronjridley/Balloons
+# Modified by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
-
 def calc_descent_rate(RapData, args, altitude):
 
     Gravity = SurfaceGravity * (EarthRadius/(EarthRadius+altitude))**2
@@ -776,8 +788,9 @@ def calc_descent_rate(RapData, args, altitude):
     return DescentRate
 
 #-----------------------------------------------------------------------------
+# Originally written by Aaron J Ridley - https://github.com/aaronjridley/Balloons
+# Modified by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
-
 def get_temperature_and_pressure(altitude,RapData):
 
     i = 0
@@ -799,8 +812,9 @@ def get_temperature_and_pressure(altitude,RapData):
 
 
 #-----------------------------------------------------------------------------
+# Originally written by Aaron J Ridley - https://github.com/aaronjridley/Balloons
+# Modified by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
-
 def get_wind(RapData,altitude):
 
     i = 0
@@ -851,9 +865,9 @@ SurfaceGravity = 9.80665 # m/s2
 EarthRadius = 6372000.0 # m
 
 #-----------------------------------------------------------------------------
-# Function to run a prediction given certain input parameters. 
+# Originally written by Aaron J Ridley - https://github.com/aaronjridley/Balloons
+# Modified by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
-
 def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEnsembles,errors):
     # Define Input List
     Inputs = ['balloon.py','-payload='+str(payload), '-balloon='+str(balloon), '-parachute='+str(parachute), '-helium='+str(helium), '-lat='+str(lat), '-lon='+str(lon),'-alt='+str(alt),'-n='+str(nEnsembles),'-error='+str(errors)]
@@ -885,7 +899,8 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
             filename,url,IsNam,StatLat,StatLon = get_station(longitude, latitude)
             StationLat = [StatLat]
             StationLon = [StatLon]
-            RapData = read_rap(filename,args,IsNam)
+            RapData,forcastTime = read_rap(filename,args,IsNam)
+            #print(filename)
     
             Diameter = 0.0
             AscentTime = 1.0
@@ -932,13 +947,13 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
                 if (StatLat != StationLat[-1]):
                     StationLat.append(StatLat)
                     StationLon.append(StatLon)
-                RapData = read_rap(oldfilename,args,IsNam)
+                RapData,forcastTime = read_rap(oldfilename,args,IsNam)
             else:
                 filename,url,IsNam,StatLat,StatLon = get_station(longitude, latitude)
                 if (StatLat != StationLat[-1]):
                     StationLat.append(StatLat)
                     StationLon.append(StatLon)
-                RapData = read_rap(filename,args,IsNam)
+                RapData,forcastTime = read_rap(filename,args,IsNam)
             
             while (Diameter < BurstDiameter and altitude > -1.0):
     
@@ -950,7 +965,7 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
                         StationLat.append(StatLat)
                         StationLon.append(StatLon)
                     if (filename != oldfilename):
-                        RapData = read_rap(filename,args,IsNam)
+                        RapData,forcastTime = read_rap(filename,args,IsNam)
                         oldfilename = filename
                 
                 NumberOfHelium = NumberOfHelium * (1.0-args['loss']/100.0/60.0*dt)
@@ -1080,7 +1095,7 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
                                 StationLat.append(StatLat)
                                 StationLon.append(StatLon)
                             if (filename != oldfilename):
-                                RapData = read_rap(filename,args,IsNam)
+                                RapData,forcastTime = read_rap(filename,args,IsNam)
                                 oldfilename = filename
         
                         Veast,Vnorth = get_wind(RapData,altitude)
@@ -1204,6 +1219,8 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
     AllData['Inputs']['Lat'] = lat
     AllData['Inputs']['Lon'] = lon
     AllData['Inputs']['Status'] = status
+    AllData['Inputs']['ForcastFile'] = filename
+    AllData['Inputs']['ForcastTime'] = forcastTime
     
     # Store data related to ensembles
     AllData['Landing Deviations'] = pandas.DataFrame()
