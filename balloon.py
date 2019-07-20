@@ -1122,6 +1122,7 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
                     DifferenceInPeakAltitude = DifferenceInPeakAltitude + (altitude-PeakAltitude)**2
     
     
+    
                 if (altitude < 0.0):
                     altitude = RapData['Altitude'][0] + 1.0
     
