@@ -19,18 +19,16 @@ import statistics
 #-----------------------------------------------------------------------------
 # Written by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
-def APRS(callsign):
-    json_response= requests.get("http://api.aprs.fi/api/get?name="+callsign+"&what=loc&apikey=42457.M4AFa3hdkXG31&format=json")
+def APRS(callsign,apikey):
+    json_response= requests.get("http://api.aprs.fi/api/get?name="+callsign+"&what=loc&apikey="+apikey+"&format=json")
     aprs_dict = json.loads(json_response.text) 
     APRS_data = aprs_dict['entries'][0]
-
     return APRS_data
 
 #-----------------------------------------------------------------------------
 # Written by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
-def send_slack(messageString,messageType,recipient):
-    slackURL = "https://hooks.slack.com/services/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"
+def send_slack(messageString,messageType,recipient,slackURL):
     icon = "ghost"
     botUsername = "Python Bot"
    
@@ -42,7 +40,6 @@ def send_slack(messageString,messageType,recipient):
     
     curlcommand = "curl -X POST --data-urlencode "
     payloadcommand = '"payload={\\"'+messageType+'\\": \\"'+recipient+'\\", \\"username\\": \\"' + botUsername + '\\", \\"text\\": \\"' + messageString + '\\", \\"icon_emoji\\": \\":' + icon + ':\\"}" ' + slackURL
-    #curl -X POST --data-urlencode "payload={\"message\": \"Robby\", \"username\": \"PythonBot\", \"text\": \"Hello\", \"icon_emoji\": \":ghost:\"}" https://hooks.slack.com/services/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
     command = curlcommand+payloadcommand
     os.system(command)
 
@@ -58,7 +55,7 @@ def package(dataset,prediction_ID):
 # Written by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
 def unpackage(prediction_ID):
-    #path = 'C:\\Users\\Owner\\Desktop\\MBURSTPython'
+    #path = ''
     #pickle_in = open(path+'\\'+prediction_ID+".pickle","rb")
     pickle_in = open(prediction_ID+".pickle","rb")
     dataset = pickle.load(pickle_in)
@@ -175,10 +172,10 @@ def PredictionAni(PredData,saving):
     lines = [ax.plot(dat[0, 0:1], dat[1, 0:1], dat[2, 0:1])[0] for dat in data]
     lines[0].set_alpha(1)
     lines[0].set_color('blue')
-    lines[0].set_linewidth = 5
+    lines[0].set_linewidth = 10
         
     for line in range(1,len(lines)):
-        lines[line].set_alpha(0.3)
+        lines[line].set_alpha(0.20)
         lines[line].set_color('red')
         lines[line].set_linewidth = 1
     
@@ -194,7 +191,7 @@ def PredictionAni(PredData,saving):
     #ax.set_zlabel('Altitude',fontsize=fontSize)
     
     # Create Animation
-    line_ani = animation.FuncAnimation(fig, update_lines,frames=max(data[0].shape[1],data[1].shape[1]), fargs=(data, lines),interval=1, blit=True)
+    line_ani = animation.FuncAnimation(fig, update_lines,frames=max(data[0].shape[1],data[1].shape[1]), fargs=(data, lines),interval=0.1, blit=True)
     plt.show()
     
     if saving == 1:
@@ -204,13 +201,17 @@ def PredictionAni(PredData,saving):
 #-----------------------------------------------------------------------------
 # Written by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
-def heatMap(data):
+def heatMap(data,apikey):
     lat_list = list(data['Landing Deviations']['Lat'])
     lon_list = list(data['Landing Deviations']['Lon'])   
     gmap = gmplot.GoogleMapPlotter(statistics.mean(lat_list),statistics.mean(lon_list),10)
     gmap.heatmap(lat_list,lon_list) 
-    gmap.apikey = <YOUR_API_KEY>
-    gmap.draw( "C:\\Users\\Owner\\Desktop\\MBURSTPython\\map.html" ) 
+    gmap.apikey = apikey
+    gmap.draw( "C:\\dev\\MBURSTPython\\map.html" ) 
+
+
+
+
 
 #-----------------------------------------------------------------------------
 # Originally written by Aaron J Ridley - https://github.com/aaronjridley/Balloons
@@ -501,7 +502,7 @@ def get_args(argv,queryTime):
 def get_station(longitude, latitude):
 
     #fpin = open(os.getcwd()+'\\StationList.txt','r')
-    fpin = open("C:\\Users\\Owner\\Desktop\\MBURSTPython\\StationList.txt",'r')
+    fpin = open("C:\\dev\\MBURSTPython\\StationList.txt",'r')
 
     MinDist = 1.0e32
 
@@ -534,7 +535,7 @@ def get_station(longitude, latitude):
         #print("Expanding list of stations....")
 
         #fpin = open(os.getcwd()+'\\StationListWorld.txt','r')
-        fpin = open("C:\\Users\\Owner\\Desktop\\MBURSTPython\\StationListWorld.txt",'r')
+        fpin = open("C:\\dev\\MBURSTPython\\StationListWorld.txt",'r')
 
         for line in fpin:
 
@@ -867,6 +868,7 @@ EarthRadius = 6372000.0 # m
 #-----------------------------------------------------------------------------
 def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEnsembles,errors):
     # Define Input List
+    start_time = time.time()
     Inputs = ['balloon.py','-payload='+str(payload), '-balloon='+str(balloon), '-parachute='+str(parachute), '-helium='+str(helium), '-lat='+str(lat), '-lon='+str(lon),'-alt='+str(alt),'-n='+str(nEnsembles),'-error='+str(errors)]
     
     if status == -1:
@@ -897,11 +899,9 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
             StationLat = [StatLat]
             StationLon = [StatLon]
             RapData,forcastTime = read_rap(filename,args,IsNam)
-            #print(filename)
     
             Diameter = 0.0
             AscentTime = 1.0
-            #print(args['altitude'])
     
             if (args['altitude'] < 0.0):
                 altitude = RapData['Altitude'][0]
@@ -1225,6 +1225,7 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
     AllData['Landing Deviations']['Lon'] = FinalLongitudes 
     AllData['Secondary Tracks'] = secondaryTracks 
     AllData['SecTracksTimeDomain'] = secondaryTracksN
-
+    
+    print("%s seconds" % (time.time() - start_time))
     return AllData
 
