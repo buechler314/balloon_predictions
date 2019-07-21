@@ -9,7 +9,6 @@ predictionNum = 6
 # Get all predictions data
 AllData = balloon.unpackageGroup(flightID,predictionNum)
 
-
 # Initialize plot
 fig = plt.figure(figsize=(40,35))
 ax = fig.gca(projection='3d')

@@ -8,6 +8,9 @@ DESCRIPTION:
 - Import balloon on any script that uses one of these functions.
 
 MODULES NEEDED:
+import re
+import datetime
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation

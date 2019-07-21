@@ -100,7 +100,7 @@ def launchPrediction(payload,balloon,parachute,helium,lat,lon,launchTime,toleran
         theta2 = data['Landing Lon']*degrees_to_radians
                
         cos = (math.sin(phi1)*math.sin(phi2)*math.cos(theta1 - theta2) + math.cos(phi1)*math.cos(phi2))
-        arc = math.acos( cos )
+        arc = math.acos(cos)
         distance = arc*3958.8*5280
         
         if distance <= tolerance:
@@ -210,9 +210,6 @@ def heatMap(data,apikey):
     gmap.draw( "C:\\dev\\MBURSTPython\\map.html" ) 
 
 
-
-
-
 #-----------------------------------------------------------------------------
 # Originally written by Aaron J Ridley - https://github.com/aaronjridley/Balloons
 # Modified by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
@@ -258,75 +255,57 @@ def get_args(argv,queryTime):
     update = 0
 
     for arg in argv:
-
         m = re.match(r'-callsign=(.*)',arg)
         if m:
             callsign = m.group(1)
-
         m = re.match(r'-payload=(.*)',arg)
         if m:
             payload = float(m.group(1))*LbsToKgs
-
         m = re.match(r'-balloon=(.*)',arg)
         if m:
             balloon = float(m.group(1))
-
         m = re.match(r'-r=(.*)',arg)
         if m:
             BalloonR = float(m.group(1))
-
         m = re.match(r'-v=(.*)',arg)
         if m:
             BalloonV = float(m.group(1))
-
         m = re.match(r'-zero',arg)
         if m:
             IsZeroPressure = 1
-
         m = re.match(r'-aprs',arg)
         if m:
             UseAprs = 1
-
         m = re.match(r'-update',arg)
         if m:
             update = 1
-
         m = re.match(r'-parachute=(.*)',arg)
         if m:
             parachute = float(m.group(1))*FtToMeters/2
-
         m = re.match(r'-helium=(.*)',arg)
         if m:
             helium = float(m.group(1))
-
         m = re.match(r'-loss=(.*)',arg)
         if m:
             loss = float(m.group(1))
-
         m = re.match(r'-de',arg)
         if m:
             IsDescent = 1
-
         m = re.match(r'-alt=(.*)',arg)
         if m:
             alt = float(m.group(1))
-
         m = re.match(r'-lat=(.*)',arg)
         if m:
             lat = float(m.group(1))
-
         m = re.match(r'-lon=(.*)',arg)
         if m:
             lon = float(m.group(1))
-
         m = re.match(r'-day=(.*)',arg)
         if m:
             Day = int(m.group(1))
-
         m = re.match(r'-currenttime=(.*)',arg)
         if m:
             CurrentTime = float(m.group(1))*60.0
-
         m = re.match(r'-ymd=(.*)',arg)
         if m:
             Ymd = m.group(1)
@@ -373,27 +352,21 @@ def get_args(argv,queryTime):
     if payload < 0:
         print("Set payload=")
         help = 1
-
     if parachute < 0:
         print("Set parachute=")
         help = 1
-
     if balloon < 0: 
         print("Set balloon=")
         help = 1
-
     if helium < 0:
         print("Set helium=")
         help = 1
-
     if lat < -90:
         print("Set lat=")
         help = 1
-
     if lon < -360:
         print("Set lon=")
         help = 1
-
     if (IsZeroPressure):
         if (BalloonR == 0):
             print ("For Zero Pressure Balloon, must set balloon radius (-r=???)")
@@ -402,7 +375,6 @@ def get_args(argv,queryTime):
             print ("For Zero Pressure Balloon, must set balloon volume (-v=???)")
             help = 1
         
-
     if help == 1:
         balloon = -1.0
         print("./balloon.py options:")
@@ -492,7 +464,6 @@ def get_args(argv,queryTime):
             'currenttime':CurrentTime,
             'launchtime':LaunchTime,
             'stime':sTimeNow}
-
     return args
 
 #-----------------------------------------------------------------------------
@@ -500,86 +471,97 @@ def get_args(argv,queryTime):
 # Modified by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
 def get_station(longitude, latitude):
-
-    #fpin = open(os.getcwd()+'\\StationList.txt','r')
-    fpin = open("C:\\dev\\MBURSTPython\\StationList.txt",'r')
-
+    #print("get_station")
+    
+    # Set min distance to some huge number
     MinDist = 1.0e32
 
     IsNam = 1
     SaveLat = 0.0
     SaveLon = 0.0
 
+    # Cycle through all stations in the united states
+    fpin = open(os.getcwd()+'\\StationList.txt','r')
     for line in fpin:
-
         m = re.match(r'(.*) SLAT = (.*) SLON = (.*) SELV = (.*)',line)
+        # If a line matches the format above,
         if m:
+            # Save that data
             inStat = m.group(1)
             inLat = float(m.group(2))
             inLon = float(m.group(3))
-            dist  = (inLat-latitude)**2 + (inLon-longitude)**2
-
+            # And compute the distance from station to point of interest
+            dist  = (inLat-latitude)**2 + (inLon-longitude)**2 
+            # If that distance is less than the min required distance that we set
             if (dist < MinDist):
+                # Reset min distance and save station data
                 MinDist = dist
                 StatSave = inStat
                 SaveLat = inLat
                 SaveLon = inLon
-                #print("New Closest : ",StatSave,inLat,inLon)
-
     fpin.close()
-
     DistSave = MinDist
+    # At this point, we found the closest station in the united states, and the distance is saved in MinDist
 
+    # If that distance (MinDist) is still too large
     if (MinDist > 500):
-
-        #print("Expanding list of stations....")
-
-        #fpin = open(os.getcwd()+'\\StationListWorld.txt','r')
-        fpin = open("C:\\dev\\MBURSTPython\\StationListWorld.txt",'r')
-
+        # Expand the list of stations to a worldwide list
+        fpin = open(os.getcwd()+'\\StationListWorld.txt','r')
+        # Cyle through each line in that file
         for line in fpin:
-
             m = re.match(r'(.*) SLAT = (.*) SLON = (.*) SELV = (.*)',line)
+            # If a line matches the format above,
             if m:
+                # Save that data
                 inStat = m.group(1)
                 inLat = float(m.group(2))
                 inLon = float(m.group(3))
+                # And compute the distance from station to point of interest
                 dist  = (inLat-latitude)**2 + (inLon-longitude)**2
-
+                # If that distance is any smaller than what we had before
                 if (dist < MinDist):
+                    # Reset min distance and save station data
                     MinDist = dist
                     StatSave = inStat
                     SaveLat = inLat
                     SaveLon = inLon
-                    #print("New Closest : ",StatSave,inLat,inLon)
-
         fpin.close()
 
     stat = StatSave
     date = datetime.datetime.now()
     sDateHour = date.strftime('%Y.%m.%d.%H')
 
+    # If the station that we found is in the united states
     if (MinDist == DistSave):
         url = 'http://www.meteor.iastate.edu/~ckarsten/bufkit/data/nam/nam_'+stat+'.buf'
-#        url = 'ftp://ftp.meteo.psu.edu/pub/bufkit/latest/nam_'+stat+'.buf'
+        #url = 'ftp://ftp.meteo.psu.edu/pub/bufkit/latest/nam_'+stat+'.buf'
+    # If the station we found was from the worldwide list
     else:
         url = 'ftp://ftp.meteo.psu.edu/pub/bufkit/GFS/latest/gfs3_'+stat+'.buf'
         IsNam = 0
 
+    # Define text file that we will write data to
     outfile = stat+'.'+sDateHour+'.txt'
 
+
     if (not os.path.isfile(outfile)):
+        #print("trying to read: ")
+        #print(url)
+        #print(outfile)
         command = 'curl -o '+outfile+' '+url
         os.system(command)
-
-    return (outfile,url,IsNam,SaveLat,SaveLon)
+    if (not os.path.isfile(outfile)):
+        print("Error getting data from URL. Check URL.")
+    return (outfile,IsNam,SaveLat,SaveLon,MinDist)
 
 #-----------------------------------------------------------------------------
 # Originally written by Aaron J Ridley - https://github.com/aaronjridley/Balloons
 # Modified by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
 def read_rap(file,args,IsNam):
-
+    #print("read_rap")
+    
+    # Different search criteria depending on which file type is used
     if (IsNam):
         SearchString = 'CFRL HGHT'
     else:
@@ -589,37 +571,40 @@ def read_rap(file,args,IsNam):
         args['hour'] = Hour
         print("modifying hour to be : "+str(args['hour']))
 
+    # Open file with data from station of interest
     fpin = open(file,'r')
-
     pressure = []
     altitude = []
     direction = []
     speed = []
     temperature = []
 
+    # Search through file line by line in order to find the right forcast time
     IsDone = 0;
     while (IsDone == 0):
-
         line = fpin.readline()
-
         if (not line):
             IsDone = 2
         else:
+            # Search for a line with this defined format
             m = re.search(r"TIME = (\d\d)(\d\d)(\d\d)/(\d\d)(\d\d)",line)
+            # If such a line is found,
             if m:
-                #print('time read : ',m.group(1),m.group(2),m.group(3),m.group(4))
+                # Assign variables
                 h = int(m.group(4))
                 d = int(m.group(3))
                 y = int(m.group(1)) + 2000
                 m = int(m.group(2))
-                #print('searching... : ',args['year'],args['month'],args['day'],args['hour'])
+                # If the time that we just found match the time that we want...
                 if (y == args['year'] and m == args['month'] and d == args['day'] and h == args['hour']):
+                    # Break out of the loop
                     IsDone = 1
                     #print('Forcast Time used for prediction: '+str(y)+' '+str(m)+' '+str(d)+' '+str(h))
     
+    # Set forcast time
     forcastTime = str(y)+'-'+str(m)+'-'+str(d)+' '+str(h)
-    #print('done reading time!')
-
+    
+    # If finding our time was successful, reset "IsDone" variable
     if (IsDone == 1):
         IsDone = 0
     else:
@@ -627,16 +612,19 @@ def read_rap(file,args,IsNam):
         fpin.seek(0,0)
         IsDone = 0
 
+    # Run through line by line, after the line that we found the right time in
     while (IsDone == 0):
-
         line = fpin.readline()
         m = re.search(r"SLAT = (.*) SLON = (.*) SELV = (.*)",line)
+        # If the line matches the format above, 
         if m:
+            # Save the variables
             lat = m.group(1)
             lon = m.group(2)
             alt = m.group(3)
             #print(lat,lon,alt)
 
+        # If the line matches the format described by "SearchString",
         m = re.search(SearchString,line)
         if m:
             # Read in all of the height data:
@@ -679,7 +667,6 @@ def read_rap(file,args,IsNam):
 # Modified by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
 def KaymontBalloonBurst(BalloonMass):
-
     # Balloon Masses
     kaymontMass = [200, 300, 350, 450, 500, 
                    600, 700, 800, 1000, 1200, 
@@ -703,7 +690,6 @@ def KaymontBalloonBurst(BalloonMass):
 # Modified by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
 def calculate_helium(NumberOfTanks):
-
     # Assumes Room Temperature:
     RoomTemp = 294.261
 
@@ -790,7 +776,6 @@ def calc_descent_rate(RapData, args, altitude):
 # Modified by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
 def get_temperature_and_pressure(altitude,RapData):
-
     i = 0
 
     while (altitude > RapData['Altitude'][i] and i < len(RapData['Altitude'])-1):
@@ -888,16 +873,19 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
     
         NumberOfHelium = calculate_helium(args['helium'])
     
-        TotalKm = 0.0
+        #TotalKm = 0.0
     
         if (BurstDiameter > 0):
     
             longitude = args['longitude']
             latitude = args['latitude']
-    
-            filename,url,IsNam,StatLat,StatLon = get_station(longitude, latitude)
+            
+            # Get weather station
+            filename,IsNam,StatLat,StatLon,MinDist = get_station(longitude, latitude)
             StationLat = [StatLat]
             StationLon = [StatLon]
+            
+            # Get weather data from that station
             RapData,forcastTime = read_rap(filename,args,IsNam)
     
             Diameter = 0.0
@@ -922,9 +910,7 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
             FinalLongitudes = []
             FinalLatitudes  = []
     
-            
             # Ascent:
-    
             
             AscentLongitude.append(longitude)
             AscentLatitude.append(latitude)
@@ -939,31 +925,30 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
             Longitudes = []
             Status = []
     
-            if (args['update'] == 1):
-                oldfilename,url,IsNam,StatLat,StatLon = get_station(longitude, latitude)
-                if (StatLat != StationLat[-1]):
-                    StationLat.append(StatLat)
-                    StationLon.append(StatLon)
-                RapData,forcastTime = read_rap(oldfilename,args,IsNam)
-            else:
-                filename,url,IsNam,StatLat,StatLon = get_station(longitude, latitude)
-                if (StatLat != StationLat[-1]):
-                    StationLat.append(StatLat)
-                    StationLon.append(StatLon)
-                RapData,forcastTime = read_rap(filename,args,IsNam)
+            # I DON'T KNOW WHY THIS IS HERE OR WHY IT IS NEEDED
+#            if (args['update'] == 1):
+#                oldfilename,IsNam,StatLat,StatLon,MinDist = get_station(longitude, latitude)
+#                if (StatLat != StationLat[-1]):
+#                    StationLat.append(StatLat)
+#                    StationLon.append(StatLon)
+#                RapData,forcastTime = read_rap(oldfilename,args,IsNam)
+#            else:
+#                filename,IsNam,StatLat,StatLon,MinDist = get_station(longitude, latitude)
+#                if (StatLat != StationLat[-1]):
+#                    StationLat.append(StatLat)
+#                    StationLon.append(StatLon)
+#                RapData,forcastTime = read_rap(filename,args,IsNam)
             
+            # Main Ascent Loop
             while (Diameter < BurstDiameter and altitude > -1.0):
-    
-                #print(altitude)
-    
-                if (args['update'] == 1):
-                    filename,url,IsNam,StatLat,StatLon = get_station(longitude, latitude)
-                    if (StatLat != StationLat[-1]):
-                        StationLat.append(StatLat)
-                        StationLon.append(StatLon)
-                    if (filename != oldfilename):
-                        RapData,forcastTime = read_rap(filename,args,IsNam)
-                        oldfilename = filename
+#                if (args['update'] == 1):
+#                    filename,IsNam,StatLat,StatLon,MinDist = get_station(longitude, latitude)
+#                    if (StatLat != StationLat[-1]):
+#                        StationLat.append(StatLat)
+#                        StationLon.append(StatLon)
+#                    if (filename != oldfilename):
+#                        RapData,forcastTime = read_rap(filename,args,IsNam)
+#                        oldfilename = filename
                 
                 NumberOfHelium = NumberOfHelium * (1.0-args['loss']/100.0/60.0*dt)
     
@@ -993,20 +978,18 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
     
                 if (AscentTime > args['bursttime']):
                     Diameter = BurstDiameter*2
-                
+            # End of main ascent loop
     
             PeakAltitude = altitude
             AscentRateSave = (altitude-AscentAltitude[0])/AscentTime
             #print('Ascent Rate :',AscentRate,' m/s')
-            AscentTimeSave = AscentTime
+            #AscentTimeSave = AscentTime
     
             BurstAltitude  = altitude 
             BurstLatitude  = latitude
             BurstLongitude = longitude
-    
             
             # Descent:
-            
             
             DescentTime = 0.0
     
@@ -1017,8 +1000,8 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
             if (altitude < 0.0):
                 altitude = RapData['Altitude'][0] + 1.0
     
+            # Main Decent Loop
             while (altitude > RapData['Altitude'][0]):
-    
                 Veast,Vnorth = get_wind(RapData,altitude)
                 DegPerMeter = 360.0 / (2*pi * (EarthRadius + altitude))
                 longitude = longitude + Veast  * DegPerMeter * dt / np.cos(latitude*dtor)
@@ -1040,60 +1023,57 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
                 Latitudes.append(latitude)
                 Longitudes.append(longitude)
                 Status.append(-1)
-     
+            # End of main decent loop
     
-            DescentRateSave = (DescentAltitude[0]-altitude)/DescentTime
+            #DescentRateSave = (DescentAltitude[0]-altitude)/DescentTime
             #print('Descent Rate :',DescentRate,' m/s')
     
-    
             #-----------------------------------------------------------------
-            # Redo calculation a few times with variations
+            # Ensembles
             #-----------------------------------------------------------------
     
             i = 0
-    
             nEnsembles = args['nEnsembles']
             errors     = args['errors']
-    
+            
             DifferenceInPeakAltitude = 0.0
             secondaryTracks = dict()
-            
             secondaryTracksN = dict()
             
+            # Main Ensemble iterative loop
             while (i < nEnsembles):
                 secLat = list()
                 secLon = list()
                 secAlt = list()
-                #print('Running Ensem')
     
                 longitude = AscentLongitude[0]
                 latitude = AscentLatitude[0]
                 altitude = AscentAltitude[0]
-    
+                
                 Diameter = 0
     
                 NumberOfHelium = calculate_helium(args['helium'])
                 NumberOfHeliumPerturbed = random.normalvariate(NumberOfHelium,NumberOfHelium*errors/4)
-                BurstDiameterPertrubed = random.normalvariate(BurstDiameter,BurstDiameter*errors/4)
+                #BurstDiameterPertrubed = random.normalvariate(BurstDiameter,BurstDiameter*errors/4)
     
-                bt = random.normalvariate(args['bursttime'],args['bursttime']*errors/4)
+                #bt = random.normalvariate(args['bursttime'],args['bursttime']*errors/4)
                 
                 TotalTimeEnsem = []
                 AscentTime = 0
                 
                 if status != -1:
+                    # Main Ascent Loop
                     while (Diameter < BurstDiameter and altitude > -1.0):
-        
                         NumberOfHelium = NumberOfHelium * (1.0-args['loss']/100.0/60.0*dt)
         
-                        if (args['update'] == 1):
-                            filename,url,IsNam,StatLat,StatLon = get_station(longitude, latitude)
-                            if (StatLat != StationLat[-1]):
-                                StationLat.append(StatLat)
-                                StationLon.append(StatLon)
-                            if (filename != oldfilename):
-                                RapData,forcastTime = read_rap(filename,args,IsNam)
-                                oldfilename = filename
+#                        if (args['update'] == 1):
+#                            filename,IsNam,StatLat,StatLon,MinDist = get_station(longitude, latitude)
+#                            if (StatLat != StationLat[-1]):
+#                                StationLat.append(StatLat)
+#                                StationLon.append(StatLon)
+#                            if (filename != oldfilename):
+#                                RapData,forcastTime = read_rap(filename,args,IsNam)
+#                                oldfilename = filename
         
                         Veast,Vnorth = get_wind(RapData,altitude)
         
@@ -1118,15 +1098,14 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
                         secLat.append(latitude)
                         secLon.append(longitude)
                         secAlt.append(altitude)
-                            
+                    #End of main ascent loop
+                    
                     DifferenceInPeakAltitude = DifferenceInPeakAltitude + (altitude-PeakAltitude)**2
-    
-    
-    
-    
+
                 if (altitude < 0.0):
                     altitude = RapData['Altitude'][0] + 1.0
     
+                # Main descent loop
                 while (altitude > RapData['Altitude'][0]):
     
                     Veast,Vnorth = get_wind(RapData,altitude)
@@ -1147,15 +1126,16 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
                     secLat.append(latitude)
                     secLon.append(longitude)
                     secAlt.append(altitude)
+                #End of main descent loop
     
                 FinalLongitudes.append(longitude)
                 FinalLatitudes.append(latitude)
                 
+                # Save all ensemble data
                 secondaryTracks[str(i)] = pandas.DataFrame(index = pandas.to_datetime(pandas.to_datetime(args['launchtime']) + pandas.to_timedelta(TotalTimeEnsem, unit='s')))
                 secondaryTracks[str(i)]['Lat'] = secLat
                 secondaryTracks[str(i)]['Lon'] = secLon
                 secondaryTracks[str(i)]['Alt'] = np.array(secAlt) * 3.28084
-                
                 if i == 0:
                     secondaryTracksN['Lat'] = pandas.DataFrame()
                     secondaryTracksN['Lat']['time'] = pandas.to_datetime(pandas.to_datetime(args['launchtime']) + pandas.to_timedelta(TotalTimeEnsem, unit='s'))
@@ -1190,9 +1170,9 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
             if (nEnsembles > 1):
                 DifferenceInPeakAltitude = np.sqrt(DifferenceInPeakAltitude/nEnsembles)
     
-            RealTimeLat = []
-            RealTimeLon = []
-            RealTimeAlt = []
+            #RealTimeLat = []
+            #RealTimeLon = []
+            #RealTimeAlt = []
            
     # Store time-domain data for nominal prediction
     AllData = dict()   
@@ -1210,6 +1190,8 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
     AllData['Landing Lat'] = Latitudes[-1]
     AllData['Landing Lon'] = Longitudes[-1]
     AllData['Landing Time'] = AllData['TimeData'].index[-1] 
+    AllData['StationDist'] = MinDist
+    AllData['RapData'] = RapData
     
     # Store data used for prediction input
     AllData['Inputs'] = dict() 
