@@ -15,12 +15,14 @@ import pickle
 import math
 import gmplot 
 import statistics
+import pandas as pd
+import subprocess
 
 #-----------------------------------------------------------------------------
 # Written by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
-def APRS(callsign,apikey):
-    json_response= requests.get("http://api.aprs.fi/api/get?name="+callsign+"&what=loc&apikey="+apikey+"&format=json")
+def APRS(callsign,APRS_apikey):
+    json_response= requests.get("http://api.aprs.fi/api/get?name="+callsign+"&what=loc&apikey="+APRS_apikey+"&format=json")
     aprs_dict = json.loads(json_response.text) 
     APRS_data = aprs_dict['entries'][0]
     return APRS_data
@@ -41,23 +43,24 @@ def send_slack(messageString,messageType,recipient,slackURL):
     curlcommand = "curl -X POST --data-urlencode "
     payloadcommand = '"payload={\\"'+messageType+'\\": \\"'+recipient+'\\", \\"username\\": \\"' + botUsername + '\\", \\"text\\": \\"' + messageString + '\\", \\"icon_emoji\\": \\":' + icon + ':\\"}" ' + slackURL
     command = curlcommand+payloadcommand
-    os.system(command)
+    #os.system(command)
+    subprocess.run(command)
 
 #-----------------------------------------------------------------------------
 # Written by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
-def package(dataset,prediction_ID):
-    pickle_out = open(prediction_ID+".pickle","wb")
+def package(dataset,prediction_ID,flightID):
+    pickle_out = open(flightID+'_'+str(prediction_ID)+".pickle","wb")
     pickle.dump(dataset, pickle_out)
     pickle_out.close()
     
 #-----------------------------------------------------------------------------
 # Written by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
-def unpackage(prediction_ID):
+def unpackage(prediction_ID,flightID):
     #path = ''
     #pickle_in = open(path+'\\'+prediction_ID+".pickle","rb")
-    pickle_in = open(prediction_ID+".pickle","rb")
+    pickle_in = open(flightID+'_'+str(prediction_ID)+".pickle","rb")
     dataset = pickle.load(pickle_in)
     return dataset
 
@@ -67,7 +70,7 @@ def unpackage(prediction_ID):
 def unpackageGroup(flightID,numPredictions):
     allPredictions = dict()
     for predictionID in range(1,numPredictions+1):
-        data = unpackage('p_'+flightID+'_'+str(predictionID))
+        data = unpackage(predictionID,flightID)
         allPredictions[str(predictionID)] = data
     return allPredictions
 
@@ -120,8 +123,29 @@ def launchPrediction(payload,balloon,parachute,helium,lat,lon,launchTime,toleran
     launchLoc['Lon'] = newLon
     launchLoc['Tolerace'] = distance
     return launchLoc
-    
 
+#-----------------------------------------------------------------------------
+# Written by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
+#-----------------------------------------------------------------------------
+def coordShift(Lat1,Lon1,Lat2,Lon2):
+    deltaLat = Lat2 - Lat1
+    deltaLon = Lon2 - Lon1
+    degrees_to_radians = math.pi/180.0
+    
+    # phi = 90 - latitude
+    phi1 = (90.0 - Lat1)*degrees_to_radians
+    phi2 = (90.0 - Lat2)*degrees_to_radians
+    
+    # theta = longitude
+    theta1 = Lon1*degrees_to_radians
+    theta2 = Lon2*degrees_to_radians
+           
+    cos = (math.sin(phi1)*math.sin(phi2)*math.cos(theta1 - theta2) + math.cos(phi1)*math.cos(phi2))
+    arc = math.acos(cos)
+    distance = arc*3958.8*5280
+    
+    return distance
+    
 #-----------------------------------------------------------------------------
 # Written by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
 #-----------------------------------------------------------------------------
@@ -209,6 +233,13 @@ def heatMap(data,apikey):
     gmap.apikey = apikey
     gmap.draw( "C:\\dev\\MBURSTPython\\map.html" ) 
 
+#-----------------------------------------------------------------------------
+# Written by members of Michigan Balloon Recovery and Satellite Testbed at the University of Michigan
+#-----------------------------------------------------------------------------
+def plotStations(loc):
+    if loc == 'US':
+        stationData = pd.read_csv(os.getcwd()+'\\StationList.txt',delimiter=' ',header=None)
+    return stationData
 
 #-----------------------------------------------------------------------------
 # Originally written by Aaron J Ridley - https://github.com/aaronjridley/Balloons
@@ -481,51 +512,25 @@ def get_station(longitude, latitude):
     SaveLon = 0.0
 
     # Cycle through all stations in the united states
-    fpin = open(os.getcwd()+'\\StationList.txt','r')
-    for line in fpin:
-        m = re.match(r'(.*) SLAT = (.*) SLON = (.*) SELV = (.*)',line)
-        # If a line matches the format above,
-        if m:
-            # Save that data
-            inStat = m.group(1)
-            inLat = float(m.group(2))
-            inLon = float(m.group(3))
-            # And compute the distance from station to point of interest
-            dist  = (inLat-latitude)**2 + (inLon-longitude)**2 
-            # If that distance is less than the min required distance that we set
-            if (dist < MinDist):
-                # Reset min distance and save station data
-                MinDist = dist
-                StatSave = inStat
-                SaveLat = inLat
-                SaveLon = inLon
-    fpin.close()
+    stationData = pd.read_csv(os.getcwd()+'\\StationList.txt',delimiter=' ',header=None)
+    stationData[10] = ((stationData[3]-latitude)**2+(stationData[6]-longitude)**2)**0.5
+    MinDistIndex = stationData[10].idxmin()
+    MinDist = stationData[10][MinDistIndex]
+    StatSave = stationData[0][MinDistIndex]
+    SaveLat = stationData[3][MinDistIndex]
+    SaveLon = stationData[6][MinDistIndex]
     DistSave = MinDist
     # At this point, we found the closest station in the united states, and the distance is saved in MinDist
 
     # If that distance (MinDist) is still too large
-    if (MinDist > 500):
-        # Expand the list of stations to a worldwide list
-        fpin = open(os.getcwd()+'\\StationListWorld.txt','r')
-        # Cyle through each line in that file
-        for line in fpin:
-            m = re.match(r'(.*) SLAT = (.*) SLON = (.*) SELV = (.*)',line)
-            # If a line matches the format above,
-            if m:
-                # Save that data
-                inStat = m.group(1)
-                inLat = float(m.group(2))
-                inLon = float(m.group(3))
-                # And compute the distance from station to point of interest
-                dist  = (inLat-latitude)**2 + (inLon-longitude)**2
-                # If that distance is any smaller than what we had before
-                if (dist < MinDist):
-                    # Reset min distance and save station data
-                    MinDist = dist
-                    StatSave = inStat
-                    SaveLat = inLat
-                    SaveLon = inLon
-        fpin.close()
+    if (MinDist > math.sqrt(500)):
+        stationDataWorld = pd.read_csv(os.getcwd()+'\\StationListWorld.txt',delimiter=' ',header=None)
+        stationDataWorld[10] = ((stationDataWorld[3]-latitude)**2+(stationDataWorld[6]-longitude)**2)**0.5
+        MinDistIndex = stationDataWorld[10].idxmin()
+        MinDist = stationDataWorld[10][MinDistIndex]
+        StatSave = stationDataWorld[0][MinDistIndex]
+        SaveLat = stationDataWorld[3][MinDistIndex]
+        SaveLon = stationDataWorld[6][MinDistIndex]
 
     stat = StatSave
     date = datetime.datetime.now()
@@ -543,7 +548,6 @@ def get_station(longitude, latitude):
     # Define text file that we will write data to
     outfile = stat+'.'+sDateHour+'.txt'
 
-
     if (not os.path.isfile(outfile)):
         #print("trying to read: ")
         #print(url)
@@ -552,6 +556,7 @@ def get_station(longitude, latitude):
         os.system(command)
     if (not os.path.isfile(outfile)):
         print("Error getting data from URL. Check URL.")
+    #print('Done get station '+outfile)
     return (outfile,IsNam,SaveLat,SaveLon,MinDist)
 
 #-----------------------------------------------------------------------------
@@ -659,7 +664,7 @@ def read_rap(file,args,IsNam):
 
     data = {'Altitude':altitude, 'Pressure':pressure, 'Temperature':temperature,
             'Veast':ve, 'Vnorth':vn}
-            
+    #print('end read rap')        
     return (data,forcastTime)
 
 #-----------------------------------------------------------------------------
@@ -1040,11 +1045,15 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
             secondaryTracks = dict()
             secondaryTracksN = dict()
             
+            numPoints = len(Altitudes)
+            
             # Main Ensemble iterative loop
             while (i < nEnsembles):
                 secLat = list()
                 secLon = list()
                 secAlt = list()
+                
+                #secLat=secLon=secAlt = np.full(int(math.floor(numPoints*1.2)), np.nan)
     
                 longitude = AscentLongitude[0]
                 latitude = AscentLatitude[0]
@@ -1060,9 +1069,11 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
                 
                 TotalTimeEnsem = []
                 AscentTime = 0
+                jA = 0
                 
                 if status != -1:
                     # Main Ascent Loop
+                    
                     while (Diameter < BurstDiameter and altitude > -1.0):
                         NumberOfHelium = NumberOfHelium * (1.0-args['loss']/100.0/60.0*dt)
         
@@ -1098,6 +1109,11 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
                         secLat.append(latitude)
                         secLon.append(longitude)
                         secAlt.append(altitude)
+                        
+                        #secLat[jA] = latitude
+                        #secLon[jA] = longitude
+                        #secAlt[jA] = altitude
+                        #jA = jA + 1
                     #End of main ascent loop
                     
                     DifferenceInPeakAltitude = DifferenceInPeakAltitude + (altitude-PeakAltitude)**2
@@ -1126,8 +1142,17 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
                     secLat.append(latitude)
                     secLon.append(longitude)
                     secAlt.append(altitude)
+                    
+                    #secLat[jA] = latitude
+                    #secLon[jA] = longitude
+                    #secAlt[jA] = altitude
+                    #jA = jA + 1
                 #End of main descent loop
     
+                #secLat = secLat[~np.isnan(secLat)]
+                #secLon = secLon[~np.isnan(secLon)]
+                #secAlt = secAlt[~np.isnan(secAlt)]
+                
                 FinalLongitudes.append(longitude)
                 FinalLatitudes.append(latitude)
                 
@@ -1210,6 +1235,6 @@ def prediction(payload,balloon,parachute,helium,lat,lon,alt,status,queryTime,nEn
     AllData['Secondary Tracks'] = secondaryTracks 
     AllData['SecTracksTimeDomain'] = secondaryTracksN
     
-    print("%s seconds" % (time.time() - start_time))
+    #print("%s seconds" % (time.time() - start_time))
     return AllData
 

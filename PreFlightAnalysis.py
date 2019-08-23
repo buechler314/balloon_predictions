@@ -9,11 +9,14 @@ parachuteDia = 6.0
 helium = 1.5
 desiredLat = 42.290977
 desiredLon = -83.717548
-launchTime = '2019-07-21 18:00:00'
+launchTime = '2019-08-23 23:00:00'
 tolerace = 5 #ft
 
+
+#ans = balloon.plotStations('US')
+
 # Do a single prediction
-data = balloon.prediction(payload,balloonWeight,parachuteDia,helium,desiredLat,desiredLon,-1,1,launchTime,50,0.2)
+data = balloon.prediction(payload,balloonWeight,parachuteDia,helium,desiredLat,desiredLon,-1,1,launchTime,100,0.2)
 
 # Animate the result
 #balloon.PredictionAni(data,0)
