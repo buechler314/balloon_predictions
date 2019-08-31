@@ -1,37 +1,37 @@
 Property of Michigan Balloon Recovery and Satellite Testbed and Aaron J Ridley
 University of Michigan, Ann Arbor MI
-Last Updated: 06/11/2019
+Last Updated: 08/30/2019
+
+The following are descriptions of python scripts and .txt files associated with all things high altitude balloons
+
 
 ---------------- Balloon.py -------------------------------------
 DESCRIPTION:
 - Contains multiple functions that can be called from external scripts.
-- Import balloon on any script that uses one of these functions.
-
-MODULES NEEDED:
-
-
+- "import balloon" on any script that uses one of these functions.
 
 FUNCTIONS:
-- APRS_data = APRS(callsign)
+- APRS_data = APRS(callsign,APRS_apikey)
 	- Function to get aprs data. 
 	- Returns dictionary with lots of info from the aprs packet
-	- callsign is a string
+	- "callsign" and "APRS_apikey" are strings
 
-- send_slack(messageString,messageType,recipient)
+- send_slack(messageString,messageType,recipient,slackURL)
 	- Function to send a slack message
 	- Inputs are:
 		- messageString (string)
 		- 'dm' for direct message, 'channel' for channel
 		- recipient - name of person like 'Robby', or channel like '#predictions'
+		- slackURL - url for sending messages to this slack account. Available in settings.
 
-- package(dataset,prediction_ID)
+- package(dataset,prediction_ID, flightID)
 	- Function to save a variable with any nesting degree
-	- Inputs are variable name and prediction ID (string) (which will be set as the filename)
+	- Inputs are variable name (dict), prediction ID (string), and flightID (string)
 
-- dataset = unpackage(prediction_ID)
+- dataset = unpackage(prediction_ID, flightID)
 	- Function to read in a saved variable
-	- Input is filename (string) without extension
-	- Returns new variable
+	- Input is prediction number (string) 
+	- Returns new variable (dict) 
 
 - allPredictions = unpackageGroup(flightID,numPredictions)
 	- Function to read in multiple saved variables.
@@ -41,14 +41,18 @@ FUNCTIONS:
 - launchLoc = launchPrediction(payload,balloon,parachute,helium,lat,lon,launchTime,tolerance)
 	- Function to run prediction backwards
 	- Outputs launching location based on desired landing location
-	- payload	- 
-	- balloon 	- 
-	- parachute	- 
-	- helium	- 
-	- lat		- 
-	- lon		- 
-	- launchTime	- 
-	- tolerace	-
+	- payload	- See prediction function
+	- balloon 	- ""
+	- parachute	- ""
+	- helium	- ""
+	- lat		- ""
+	- lon		- ""
+	- launchTime	- ""
+	- tolerace	- Number of ft that the backwards prediction is allowed to be off by. 
+
+- coordshift(Lat1,Lon1,Lat2,Lon2)
+	- Computes distance in ft between two sets of coordinates.
+	- Inputs are floats
 
 - plotPrediction(data)
 	- Function to plot one prediction worth of data statically in 3D space
@@ -60,10 +64,10 @@ FUNCTIONS:
 	- saving	- 1 (save animation as GIF), or 0 (don't).
 			- Saving GIF takes significant time and memory allocation.
 
-- heatMap(data)
+- heatMap(data, apikey)
 	- Function to create a 2D heatmap of landing probabilities overlaid on google maps
 	- Saves an html file to local directory.
-	- Requires google maps api key. 
+	- Requires google maps api key (string)
 
 - get_args(argv,queryTime)
 	- Referenced by other functions
@@ -95,7 +99,7 @@ FUNCTIONS:
 - get_wind(RapData,altitude)
 	- Referenced by other functions
 
-- data = prediction(payload weight,balloon mass,parachute diameter,helium tanks,latitude,longitude,current altitude,status,query time,# of ensembles, error in ensembles)
+- data = prediction(payload weight,balloon mass,parachute diameter,helium tanks,latitude,longitude,current altitude,status,query time,# of ensembles, error in ensembles, TESTINGtimeDiff)
 	- payload weight        - lbs (float)
 	- balloon mass          - grams (float)
 	- parachute diameter    - ft (float)
@@ -107,6 +111,7 @@ FUNCTIONS:
 	- query time            - string: 'now' or 'YYYY-MM-DD hh:mm:ss'. 
 	- # of ensembles 	      - Number of ensembles to run (int). -1 if none. 
 	- error in ensembles    - Amount of error to run with each ensemble (float). Usually between 0 and 1.
+	- TESTINGtimeDiff	- Number of hours that the package is off from the local time. Use if testing balloons on APRS in different time zones.
 
 	Function returns a dictionary, which consists of keys:
 	..['Ascent Rate']         - ft/s
@@ -146,11 +151,21 @@ FUNCTIONS:
 					- ['Lat']
 					- ['Lon']
 					- ['Alt'] 
+				- Example: data['Secondary Tracks'][13]['Lat']
 	..['SecTracksTimeDomain']	- Same data as ['Secondary Tracks']
 					- Saved as a dataframe synchronized in the time domain 
-	
+
+	..['RapData']		- Dictionary containing Rap data used to do prediction
+				- Contains arrays:
+					..['Altitude']
+					..['Pressure']
+					..['Temperature']
+					..['Veast']
+					..['Vnorth']
+	..['StationDist']	- Distance of prediction coordinate to the weather station used for calculations (decimal degrees)
+		
 	Example:
-	data = balloon.prediction(6.0,1000,6.0,1,41.64,-83.243,40000,1,'now',110,0.2)
+	data = balloon.prediction(6.0,1000,6.0,1,41.64,-83.243,40000,1,'now',110,0.2,0)
 
 
 ---------------- StationList.txt -------------------------------------
@@ -163,9 +178,27 @@ FUNCTIONS:
 
 ---------------- PreFlightAnalysis.py -------------------------------------
 - under development 
+- Does a prediction backwards to find best launch location for a desired landing location, animates the result, and does a checksum by doing prediction forwards from given launch location
 
----------------- postFlightAnalysis.py -------------------------------------
+---------------- PostFlightAnalysis.py -------------------------------------
 - under development 
+- Plots (all or some) prediction data from a single flight in a 3D space. Zoom and orientation can be controlled by user. 
+
+---------------- TrackingCode(APRS).py -------------------------------------
+- Main commanding script used to track and record data for a single flight, if APRS trackers are being used.
+- Notifications are sent via slack 
+	- initially after launch
+	- immediatly before landing
+	- during flight if the predicted landing coordinates shift more than a set threshold from the last slack notification. 
+- All data is saved from all predictions.
+	- Data is saved iteratively to prevent data loss associated with program failure. 
+- Able to send warnings via slack if tracker preformance or gps reception is not nominal. 
+- Able to self-diagnose code errors and attempt to solve them in order to keep tracking.  
+
+
+
+
+
 
 
 
