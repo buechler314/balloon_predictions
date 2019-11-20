@@ -2,6 +2,8 @@ Property of Michigan Balloon Recovery and Satellite Testbed and Aaron J Ridley
 University of Michigan, Ann Arbor MI
 Last Updated: 08/30/2019
 
+** Visit the Michigan Balloon Recovery and Satellite Testbed Github page for most recent updates **
+
 The following are descriptions of python scripts and .txt files associated with all things high altitude balloons.
 
 ---------------- Balloon.py -------------------------------------
